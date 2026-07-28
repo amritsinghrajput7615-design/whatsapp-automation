@@ -137,7 +137,7 @@ app.listen(PORT, () => {
   logger.info(`   Meta WH  → http://localhost:${PORT}/webhooks/meta`);
   logger.info(`   Fastrr   → http://localhost:${PORT}/webhooks/fastrr/test`);
   logger.info(`   Mode     → ${IS_PROD ? 'production' : 'development'}`);
-  warnMissingEnv();
+
   startAbandonedCartScheduler();
 });
 
