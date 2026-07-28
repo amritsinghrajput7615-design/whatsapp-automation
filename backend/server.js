@@ -129,6 +129,28 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ── Startup env check ─────────────────────────────────────────────────────────
+function warnMissingEnv() {
+  const required = [
+    'WHATSAPP_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SHOPIFY_WEBHOOK_SECRET',
+    'META_VERIFY_TOKEN',
+  ];
+  const optional = [
+    'SHOPIFY_SHOP',
+    'SHOPIFY_CLIENT_ID',
+    'SHOPIFY_CLIENT_SECRET',
+    'FASTRR_WEBHOOK_SECRET',
+  ];
+  required.forEach((k) => {
+    if (!process.env[k]) logger.warn(`⚠️  Missing required env var: ${k}`);
+  });
+  optional.forEach((k) => {
+    if (!process.env[k]) logger.info(`ℹ️  Optional env var not set: ${k}`);
+  });
+}
+
 // ── Start server ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   logger.info(`🚀 Server → http://localhost:${PORT}`);
@@ -137,7 +159,7 @@ app.listen(PORT, () => {
   logger.info(`   Meta WH  → http://localhost:${PORT}/webhooks/meta`);
   logger.info(`   Fastrr   → http://localhost:${PORT}/webhooks/fastrr/test`);
   logger.info(`   Mode     → ${IS_PROD ? 'production' : 'development'}`);
-
+  warnMissingEnv();
   startAbandonedCartScheduler();
 });
 
