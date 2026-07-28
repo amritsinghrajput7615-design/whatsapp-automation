@@ -87,9 +87,16 @@ app.use((req, res, next) => {
 });
 
 // ── API + Webhook Routes ──────────────────────────────────────────────────────
-app.use('/health', require('./routes/health'));
-app.use('/webhooks', require('./routes/webhooks'));
-app.use('/api', require('./routes/api'));
+app.use('/health',    require('./routes/health'));
+app.use('/webhooks',  require('./routes/webhooks'));
+app.use('/api',       require('./routes/api'));
+
+// ── Fastrr Checkout (Shiprocket) ── REMOVE THIS LINE to disable Fastrr ───────
+app.use('/webhooks/fastrr', require('./routes/fastrr'));
+
+// ── Meta WhatsApp Cloud API ───────────────────────────────────────────────────
+// Handles verification handshake (GET) + status updates/replies (POST)
+app.use('/webhooks/meta',   require('./routes/meta'));
 
 // ── Serve built React frontend ────────────────────────────────────────────────
 // Set SERVE_FRONTEND=true in .env to have one Node process serve everything.
@@ -124,11 +131,13 @@ app.use((err, req, res, next) => {
 
 // ── Start server ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  logger.info(`🚀 Server listening on http://localhost:${PORT}`);
-  logger.info(`   Health check → http://localhost:${PORT}/health`);
-  logger.info(`   Dashboard API → http://localhost:${PORT}/api/stats`);
-
-  // Start the abandoned-cart cron job
+  logger.info(`🚀 Server → http://localhost:${PORT}`);
+  logger.info(`   Health   → http://localhost:${PORT}/health`);
+  logger.info(`   API      → http://localhost:${PORT}/api/stats`);
+  logger.info(`   Meta WH  → http://localhost:${PORT}/webhooks/meta`);
+  logger.info(`   Fastrr   → http://localhost:${PORT}/webhooks/fastrr/test`);
+  logger.info(`   Mode     → ${IS_PROD ? 'production' : 'development'}`);
+  warnMissingEnv();
   startAbandonedCartScheduler();
 });
 
