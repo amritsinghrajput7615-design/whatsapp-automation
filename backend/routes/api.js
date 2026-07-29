@@ -505,4 +505,64 @@ router.post('/shopify/graphql', async (req, res) => {
   }
 });
 
+// ── POST /api/test/send-template ──────────────────────────────────────────────
+// Send any approved Meta template to any number directly via the live server.
+// Body: { to: "918083887615", template: "hello_world", language: "en_US" }
+// Language defaults to "en_US" if not provided.
+
+router.post('/test/send-template', async (req, res) => {
+  try {
+    const { to, template: templateName, language } = req.body;
+
+    if (!to || !templateName) {
+      return res.status(400).json({
+        error: 'Required fields: to (phone with country code), template (template name)',
+        example: { to: '918083887615', template: 'hello_world', language: 'en_US' },
+      });
+    }
+
+    const s           = store.getSettings();
+    const token       = s.whatsappToken       || process.env.WHATSAPP_TOKEN;
+    const phoneNumId  = s.whatsappPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+    if (!token || !phoneNumId) {
+      return res.status(400).json({ error: 'WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID not configured' });
+    }
+
+    const response = await axios.post(
+      `https://graph.facebook.com/v20.0/${phoneNumId}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name:     templateName,
+          language: { code: language || 'en_US' },
+        },
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    logger.info(`[Test] Template "${templateName}" sent to ${to}`, {
+      messageId: response.data?.messages?.[0]?.id,
+    });
+
+    res.json({
+      success:   true,
+      to,
+      template:  templateName,
+      messageId: response.data?.messages?.[0]?.id,
+      waId:      response.data?.contacts?.[0]?.wa_id,
+    });
+  } catch (err) {
+    const apiErr = err.response?.data?.error;
+    logger.error('[Test] send-template failed:', { error: apiErr || err.message });
+    res.status(400).json({
+      success: false,
+      error:   apiErr?.message || err.message,
+      code:    apiErr?.code,
+    });
+  }
+});
+
 module.exports = router;
