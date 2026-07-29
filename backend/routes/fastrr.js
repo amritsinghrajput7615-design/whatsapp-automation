@@ -50,6 +50,30 @@ function softAuth(req, res, next) {
   next(); // Always continue — never block Fastrr silently
 }
 
+// ── GET /webhooks/fastrr ──────────────────────────────────────────────────────
+// Health-check / info endpoint (browser visits, Fastrr dashboard pings)
+
+router.get('/', (req, res) => {
+  const secret = process.env.FASTRR_WEBHOOK_SECRET;
+  const authConfigured = secret && secret !== 'your-fastrr-secret-here';
+  res.json({
+    status:         'Fastrr webhook endpoint is reachable ✅',
+    webhookUrl:     'https://whatsapp-automation-3o94.onrender.com/webhooks/fastrr',
+    method:         'POST (Fastrr sends POST — this GET is for info only)',
+    debugUrl:       'https://whatsapp-automation-3o94.onrender.com/webhooks/fastrr/debug',
+    testUrl:        'https://whatsapp-automation-3o94.onrender.com/webhooks/fastrr/test',
+    authConfigured,
+    fastrrSetup: [
+      'Go to: Shiprocket → Solutions → Checkout → Webhooks → Add Webhook',
+      'Set URL: https://whatsapp-automation-3o94.onrender.com/webhooks/fastrr',
+      'Select event: Abandon Cart',
+      authConfigured
+        ? 'Add Header → Authorization: Bearer <your FASTRR_WEBHOOK_SECRET>'
+        : 'No auth header needed (FASTRR_WEBHOOK_SECRET not configured)',
+    ],
+  });
+});
+
 // ── POST /webhooks/fastrr ─────────────────────────────────────────────────────
 
 router.post('/', softAuth, (req, res) => {
