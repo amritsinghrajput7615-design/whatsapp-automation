@@ -87,9 +87,10 @@ app.use((req, res, next) => {
 });
 
 // ── API + Webhook Routes ──────────────────────────────────────────────────────
+// ⚠️  ORDER MATTERS: more-specific paths (/webhooks/fastrr, /webhooks/meta)
+//    MUST be mounted BEFORE the generic /webhooks router, otherwise Express
+//    matches the generic prefix first and the sub-routers are never reached.
 app.use('/health',    require('./routes/health'));
-app.use('/webhooks',  require('./routes/webhooks'));
-app.use('/api',       require('./routes/api'));
 
 // ── Fastrr Checkout (Shiprocket) ── REMOVE THIS LINE to disable Fastrr ───────
 app.use('/webhooks/fastrr', require('./routes/fastrr'));
@@ -97,6 +98,10 @@ app.use('/webhooks/fastrr', require('./routes/fastrr'));
 // ── Meta WhatsApp Cloud API ───────────────────────────────────────────────────
 // Handles verification handshake (GET) + status updates/replies (POST)
 app.use('/webhooks/meta',   require('./routes/meta'));
+
+// ── Shopify webhooks (generic — must come AFTER the specific sub-paths above) ──
+app.use('/webhooks',  require('./routes/webhooks'));
+app.use('/api',       require('./routes/api'));
 
 // ── Serve built React frontend ────────────────────────────────────────────────
 // Set SERVE_FRONTEND=true in .env to have one Node process serve everything.
