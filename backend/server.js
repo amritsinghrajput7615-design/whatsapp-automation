@@ -21,6 +21,11 @@ const cors = require('cors');
 const path = require('path');
 const logger = require('./logger');
 const { startAbandonedCartScheduler } = require('./abandonedCart');
+const {
+  normalisePayload,
+  handleAbandonedCart,
+  handleOrderCreated,
+} = require('./fastrr'); // used by the POST / fallback below
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -121,6 +126,48 @@ if (process.env.SERVE_FRONTEND === 'true') {
 
   logger.info(`📦 Serving frontend from: ${distPath}`);
 }
+
+// ── Fastrr ROOT fallback ─────────────────────────────────────────────────────
+// Fastrr sometimes POSTs to "/" when the dashboard URL is misconfigured.
+// We detect it by the presence of Fastrr-specific fields and process it anyway.
+// FIX IN FASTRR DASHBOARD: set URL to /webhooks/fastrr to remove this fallback.
+app.post('/', (req, res) => {
+  const body = req.body || {};
+  const looksLikeFastrr = body.phone || body.line_items || body.items ||
+    body.event || body.abandoned_checkout_url || body.checkout_id;
+
+  if (!looksLikeFastrr) {
+    return res.status(404).json({ error: 'Not found: POST /' });
+  }
+
+  logger.warn(
+    '[Server] ⚠️  POST / looks like a Fastrr webhook — processing anyway.' +
+    ' Fix the URL in Fastrr dashboard to /webhooks/fastrr to silence this warning.',
+    { ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress }
+  );
+
+  // Acknowledge immediately so Fastrr doesn't retry
+  res.status(200).json({ received: true });
+
+  // Process async
+  setImmediate(async () => {
+    try {
+      const data  = normalisePayload(body);
+      const event = data.event;
+      logger.info(`[Root Fastrr fallback] Processing event: "${event}"`, {
+        checkoutId: data.checkoutId,
+        phone:      data.phone,
+      });
+      if (event === 'order_created' || event === 'checkout_completed' || event === 'purchase') {
+        await handleOrderCreated(data);
+      } else {
+        await handleAbandonedCart(data);
+      }
+    } catch (err) {
+      logger.error('[Root Fastrr fallback] Error:', { error: err.message, stack: err.stack });
+    }
+  });
+});
 
 // ── 404 handler (API routes only when SERVE_FRONTEND is off) ─────────────────
 app.use((req, res) => {
