@@ -178,4 +178,60 @@ router.get('/debug', (req, res) => {
   });
 });
 
+// ── POST /webhooks/fastrr/simulate ───────────────────────────────────────────
+// Test endpoint: send a fake abandoned-cart payload to verify the full pipeline.
+// Usage (curl):
+//   curl -X POST https://whatsapp-automation-3o94.onrender.com/webhooks/fastrr/simulate \
+//     -H "Content-Type: application/json" \
+//     -d '{"phone":"91XXXXXXXXXX","first_name":"Test","total_price":"999","line_items":[{"title":"Test Product","quantity":1,"price":"999"}]}'
+
+router.post('/simulate', (req, res) => {
+  const testPayload = {
+    event:               req.body?.event || 'abandoned_cart',
+    id:                  req.body?.id    || `sim_${Date.now()}`,
+    token:               req.body?.token || 'sim_token',
+    phone:               req.body?.phone || '',
+    email:               req.body?.email || 'test@example.com',
+    first_name:          req.body?.first_name || 'Test',
+    last_name:           req.body?.last_name  || 'User',
+    currency:            req.body?.currency   || 'INR',
+    total_price:         req.body?.total_price || '999.00',
+    abandoned_checkout_url: req.body?.abandoned_checkout_url || 'https://example.com/checkout',
+    line_items: req.body?.line_items || [
+      { title: 'Test Product', quantity: 1, price: '999.00', variant_title: 'Default' },
+    ],
+  };
+
+  // Update debug store
+  _lastRawPayload = {
+    receivedAt: new Date().toISOString(),
+    headers:    { 'content-type': 'application/json', 'user-agent': 'simulate-endpoint' },
+    body:       testPayload,
+    note:       '⚠️ This is a SIMULATED payload, not a real Fastrr webhook',
+  };
+
+  logger.info('[Fastrr] 🧪 Simulated webhook received', {
+    phone: testPayload.phone,
+    event: testPayload.event,
+  });
+
+  if (!testPayload.phone) {
+    return res.status(400).json({
+      error: 'phone field is required for simulation',
+      hint:  'Add "phone": "91XXXXXXXXXX" to your request body',
+    });
+  }
+
+  res.status(200).json({ received: true, simulated: true, payload: testPayload });
+
+  setImmediate(async () => {
+    try {
+      const data  = normalisePayload(testPayload);
+      await handleAbandonedCart(data);
+    } catch (err) {
+      logger.error('[Fastrr] Simulate error:', { error: err.message });
+    }
+  });
+});
+
 module.exports = router;

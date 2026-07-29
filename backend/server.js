@@ -73,9 +73,13 @@ app.use((req, res, next) => {
   });
 });
 
-// ── JSON body parser for non-webhook routes ───────────────────────────────────
+// ── JSON + URL-encoded body parsers for non-webhook routes ─────────────────────
 app.use((req, res, next) => {
   if (req.path.startsWith('/webhooks/')) return next();
+  const ct = req.headers['content-type'] || '';
+  if (ct.includes('application/x-www-form-urlencoded')) {
+    return express.urlencoded({ extended: true, limit: '1mb' })(req, res, next);
+  }
   express.json({ limit: '1mb' })(req, res, next);
 });
 
@@ -128,35 +132,39 @@ if (process.env.SERVE_FRONTEND === 'true') {
 }
 
 // ── Fastrr ROOT fallback ─────────────────────────────────────────────────────
-// Fastrr sometimes POSTs to "/" when the dashboard URL is misconfigured.
-// We detect it by the presence of Fastrr-specific fields and process it anyway.
-// FIX IN FASTRR DASHBOARD: set URL to /webhooks/fastrr to remove this fallback.
+// Catches ALL POST requests to "/" — Fastrr sends here when dashboard URL is wrong.
+// Always returns 200 so Fastrr doesn't retry. Fix URL in Fastrr dashboard!
 app.post('/', (req, res) => {
-  const body = req.body || {};
-  const looksLikeFastrr = body.phone || body.line_items || body.items ||
-    body.event || body.abandoned_checkout_url || body.checkout_id;
-
-  if (!looksLikeFastrr) {
-    return res.status(404).json({ error: 'Not found: POST /' });
-  }
+  const body   = req.body || {};
+  const rawStr = JSON.stringify(body);
 
   logger.warn(
-    '[Server] ⚠️  POST / looks like a Fastrr webhook — processing anyway.' +
-    ' Fix the URL in Fastrr dashboard to /webhooks/fastrr to silence this warning.',
-    { ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress }
+    '[Server] ⚠️  POST / received — treating as Fastrr webhook.' +
+    ' Please fix webhook URL in Fastrr dashboard to /webhooks/fastrr',
+    {
+      ip:         req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
+      bodyKeys:   Object.keys(body),
+      bodySnippet: rawStr.slice(0, 300),
+    }
   );
 
-  // Acknowledge immediately so Fastrr doesn't retry
+  // Acknowledge immediately so Fastrr never retries
   res.status(200).json({ received: true });
 
   // Process async
   setImmediate(async () => {
     try {
+      if (!Object.keys(body).length) {
+        logger.error('[Root Fastrr fallback] Empty body — body parser may have failed.' +
+          ' Content-Type was: ' + (req.headers['content-type'] || 'missing'));
+        return;
+      }
       const data  = normalisePayload(body);
       const event = data.event;
       logger.info(`[Root Fastrr fallback] Processing event: "${event}"`, {
         checkoutId: data.checkoutId,
         phone:      data.phone,
+        items:      data.lineItems?.length,
       });
       if (event === 'order_created' || event === 'checkout_completed' || event === 'purchase') {
         await handleOrderCreated(data);
