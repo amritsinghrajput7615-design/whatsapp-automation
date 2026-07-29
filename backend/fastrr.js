@@ -90,8 +90,8 @@ function verifyFastrrWebhook(req, res, next) {
 function normalisePayload(body) {
   return {
     event:               body.event || 'unknown',
-    checkoutId:          String(body.id   || body.checkout_id   || ''),
-    cartToken:           body.token || body.cart_token || '',
+    checkoutId:          String(body.cart_token || body.token || body.cart_id || body.checkout_id || body.id || ''),
+    cartToken:           body.cart_token || body.token || '',
     phone:               body.phone || body.phone_number || '',
     email:               body.email || '',
     firstName:           body.first_name  || '',
