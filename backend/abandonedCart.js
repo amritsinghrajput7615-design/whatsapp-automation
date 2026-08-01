@@ -88,15 +88,40 @@ async function checkAbandonedCarts() {
       let result;
 
       if (templateName) {
+        // ── Map to your approved "abandoned_cart_reminder" template ──
+        //
+        // Template body:
+        //   Hi {{1}}, you left {{2}} in your cart!
+        //   Complete your order now before it sells out.
+        //   Your cart total: {{3}}
+        //   Prices may change if items go out of stock.
+        //
+        // Button: "Visit website" (dynamic URL suffix = checkout URL)
+
+        const cartTotal = checkout.totalPrice
+          ? `${checkout.currency || 'INR'} ${parseFloat(checkout.totalPrice).toFixed(2)}`
+          : 'your selected items';
+
+        const firstItem = (checkout.lineItems || [])[0]?.title || 'your items';
+
         const components = [
           {
             type: 'body',
             parameters: [
-              { type: 'text', text: customerName || 'there'                        },  // {{1}}
-              { type: 'text', text: cartValue                                      },  // {{2}}
-              { type: 'text', text: checkout.abandonedCheckoutUrl || ''            },  // {{3}}
+              { type: 'text', text: customerName || 'there'             },  // {{1}} name
+              { type: 'text', text: firstItem                           },  // {{2}} item
+              { type: 'text', text: cartTotal                           },  // {{3}} total
             ],
           },
+          // "Visit website" URL button
+          ...(checkout.abandonedCheckoutUrl ? [{
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [
+              { type: 'text', text: checkout.abandonedCheckoutUrl },
+            ],
+          }] : []),
         ];
         result = await sendWhatsAppTemplate(
           checkout.phone, templateName, langCode, components,

@@ -262,25 +262,41 @@ async function handleAbandonedCart(data) {
   let result;
 
   if (templateName) {
-    // Build template components with the cart variables
+    // ── Map to your approved "abandoned_cart_reminder" template ──
     //
-    // Expected template body (example):
-    //   "Hi {{1}}! You left items worth {{2}} in your cart. Complete your order: {{3}}"
+    // Template body:
+    //   Hi {{1}}, you left {{2}} in your cart!
+    //   Complete your order now before it sells out.
+    //   Your cart total: {{3}}
+    //   Prices may change if items go out of stock.
     //
-    // Adjust the parameters below to match YOUR approved template's variable order.
-    const cartValue = totalPrice && parseFloat(totalPrice) > 0
+    // Button: "Visit website" (dynamic URL suffix = checkout URL)
+
+    const cartTotal = totalPrice && parseFloat(totalPrice) > 0
       ? `${currency} ${parseFloat(totalPrice).toFixed(2)}`
       : 'your selected items';
+
+    // {{2}} = first item title (the template shows one item name)
+    const firstItem = lineItems[0]?.title || 'your items';
 
     const components = [
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: customerName   || 'there'   },   // {{1}} customer name
-          { type: 'text', text: cartValue                   },   // {{2}} cart value
-          { type: 'text', text: abandonedCheckoutUrl || ''  },   // {{3}} checkout URL
+          { type: 'text', text: customerName || 'there' },   // {{1}} name
+          { type: 'text', text: firstItem               },   // {{2}} item
+          { type: 'text', text: cartTotal               },   // {{3}} total
         ],
       },
+      // "Visit website" URL button — passes the checkout URL as the dynamic suffix
+      ...(abandonedCheckoutUrl ? [{
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        parameters: [
+          { type: 'text', text: abandonedCheckoutUrl },
+        ],
+      }] : []),
     ];
 
     logger.info(`[Fastrr] Using template "${templateName}" (${langCode}) for ${phone}`);
