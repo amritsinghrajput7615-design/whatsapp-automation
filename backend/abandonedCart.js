@@ -12,7 +12,7 @@
 
 const cron = require('node-cron');
 const store = require('./store');
-const { sendWhatsAppMessage } = require('./whatsapp');
+const { sendWhatsAppMessage, sendWhatsAppTemplate } = require('./whatsapp');
 const logger = require('./logger');
 
 const ABANDONED_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
@@ -58,14 +58,14 @@ async function checkAbandonedCarts() {
         continue;
       }
 
-      // Build reminder message
+      // Build reminder message (used for free-text fallback only)
       const customerName = checkout.customerName || 'there';
       const cartValue = checkout.totalPrice
-        ? `${checkout.currency || 'USD'} ${checkout.totalPrice}`
+        ? `${checkout.currency || 'INR'} ${checkout.totalPrice}`
         : 'your selected items';
 
       const itemLines = (checkout.lineItems || [])
-        .slice(0, 5) // cap at 5 items to keep message concise
+        .slice(0, 5)
         .map((i) => `• ${i.title} × ${i.quantity}`)
         .join('\n');
 
@@ -73,7 +73,7 @@ async function checkAbandonedCarts() {
         ? `\n\n🔗 ${checkout.abandonedCheckoutUrl}`
         : '';
 
-      const message =
+      const fallbackMessage =
         `Hi ${customerName}! 🛒 You left something behind!\n\n` +
         `Items worth ${cartValue} are still in your cart:\n` +
         `${itemLines || '• Your cart items'}\n\n` +
@@ -81,12 +81,36 @@ async function checkAbandonedCarts() {
 
       logger.info(`Sending abandoned-cart reminder → checkout ${checkout.checkoutId}`);
 
-      const result = await sendWhatsAppMessage(
-        checkout.phone,
-        message,
-        'abandoned_cart',
-        checkout.checkoutId
-      );
+      // ── Use approved template for proactive outbound messages ───────────────────
+      const templateName = process.env.WHATSAPP_ABANDONED_CART_TEMPLATE;
+      const langCode     = process.env.WHATSAPP_TEMPLATE_LANG || 'en';
+
+      let result;
+
+      if (templateName) {
+        const components = [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: customerName || 'there'                        },  // {{1}}
+              { type: 'text', text: cartValue                                      },  // {{2}}
+              { type: 'text', text: checkout.abandonedCheckoutUrl || ''            },  // {{3}}
+            ],
+          },
+        ];
+        result = await sendWhatsAppTemplate(
+          checkout.phone, templateName, langCode, components,
+          'abandoned_cart', checkout.checkoutId
+        );
+      } else {
+        logger.warn(
+          `Checkout ${checkout.checkoutId}: WHATSAPP_ABANDONED_CART_TEMPLATE not set — ` +
+          'using free-text (silently dropped by Meta outside 24h window)'
+        );
+        result = await sendWhatsAppMessage(
+          checkout.phone, fallbackMessage, 'abandoned_cart', checkout.checkoutId
+        );
+      }
 
       // Always mark reminded so we don't retry failed sends automatically
       store.markCheckoutReminded(checkout.checkoutId);

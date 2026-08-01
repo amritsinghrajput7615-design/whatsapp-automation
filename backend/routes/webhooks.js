@@ -178,4 +178,76 @@ async function handleCheckout(checkout) {
   }
 }
 
+// ── GET /webhooks/meta ────────────────────────────────────────────────────────
+// Meta calls this to verify the webhook subscription.
+// Set META_VERIFY_TOKEN in .env to match what you entered in Meta Developer Console.
+
+router.get('/meta', (req, res) => {
+  const verifyToken = process.env.META_VERIFY_TOKEN;
+  const mode        = req.query['hub.mode'];
+  const token       = req.query['hub.verify_token'];
+  const challenge   = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && token === verifyToken) {
+    logger.info('[Meta] Webhook verification successful');
+    return res.status(200).send(challenge);
+  }
+  logger.warn('[Meta] Webhook verification failed', { mode, token: token?.slice(0, 8) });
+  res.sendStatus(403);
+});
+
+// ── POST /webhooks/meta ───────────────────────────────────────────────────────
+// Receives real-time delivery status from Meta:
+//   sent → delivered → read   (or failed with error code)
+// Register this URL in Meta Developer Console → WhatsApp → Configuration → Webhook
+// Subscribe to the "messages" field.
+
+router.post('/meta', (req, res) => {
+  res.sendStatus(200); // ack immediately
+
+  setImmediate(() => {
+    try {
+      const body = req.body;
+      if (body.object !== 'whatsapp_business_account') return;
+
+      for (const entry of (body.entry || [])) {
+        for (const change of (entry.changes || [])) {
+          const val = change.value || {};
+
+          // — Delivery status updates —
+          for (const status of (val.statuses || [])) {
+            const { id: waMessageId, status: st, recipient_id, errors } = status;
+
+            if (st === 'delivered') {
+              logger.info(`📩 Message DELIVERED to ${recipient_id}`, { waMessageId });
+            } else if (st === 'read') {
+              logger.info(`👀 Message READ by ${recipient_id}`, { waMessageId });
+            } else if (st === 'sent') {
+              logger.info(`📤 Message SENT (on-net) to ${recipient_id}`, { waMessageId });
+            } else if (st === 'failed') {
+              const errCode = errors?.[0]?.code;
+              const errMsg  = errors?.[0]?.message || errors?.[0]?.title || 'unknown';
+              logger.error(
+                `❌ Message FAILED for ${recipient_id} — code ${errCode}: ${errMsg}`,
+                { waMessageId, errors }
+              );
+            } else {
+              logger.info(`[Meta] Status "${st}" for ${recipient_id}`, { waMessageId });
+            }
+          }
+
+          // — Inbound messages (logs who's in the 24h service window) —
+          for (const msg of (val.messages || [])) {
+            logger.info(`💬 Inbound ${msg.type} from ${msg.from} — 24h window open`, {
+              messageId: msg.id,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.error('[Meta] Error processing status webhook:', { error: err.message });
+    }
+  });
+});
+
 module.exports = router;

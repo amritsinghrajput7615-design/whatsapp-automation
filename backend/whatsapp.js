@@ -4,8 +4,18 @@
  * whatsapp.js — WhatsApp Cloud API helper.
  *
  * Exports:
- *   normalizePhone(phone, defaultCountryCode) → string | null
- *   sendWhatsAppMessage(to, message, messageType, referenceId) → Promise<Result>
+ *   normalizePhone(phone, defaultCountryCode)                       → string | null
+ *   sendWhatsAppMessage(to, message, messageType, referenceId)      → Promise<Result>
+ *   sendWhatsAppTemplate(to, templateName, langCode, components,
+ *                        messageType, referenceId)                  → Promise<Result>
+ *
+ * WHY TEMPLATES?
+ *  WhatsApp only allows free-form text WITHIN a 24-hour customer-service window
+ *  (i.e. after the customer messages YOU first).  For proactive outbound messages
+ *  such as abandoned-cart reminders you MUST use a pre-approved template — Meta
+ *  accepts the API call either way and returns a wamid, but silently drops the
+ *  message if it violates the policy.  Use sendWhatsAppTemplate() for all
+ *  abandoned-cart / order-confirmation flows.
  */
 
 const axios = require('axios');
@@ -57,12 +67,104 @@ function normalizePhone(phone, defaultCountryCode) {
 // ── Message sending ───────────────────────────────────────────────────────────
 
 /**
+ * Send an APPROVED WhatsApp message template via Meta Cloud API.
+ *
+ * This is the correct way to initiate proactive conversations (abandoned carts,
+ * order confirmations, etc.).  Free-form text messages sent outside a 24-hour
+ * customer-service window are silently dropped by Meta even though a wamid
+ * is returned.
+ *
+ * @param {string}   to            Recipient phone (any format; will be normalised)
+ * @param {string}   templateName  Exact template name as approved in WhatsApp Manager
+ * @param {string}   [langCode]    Language code (default: 'en' — change if template is in another language)
+ * @param {Array}    [components]  Template variable components (header/body/button params)
+ * @param {string}   [messageType] For logging: 'abandoned_cart' | 'order_confirmation' | etc.
+ * @param {string}   [referenceId] Checkout/order ID for log correlation
+ * @returns {Promise<{success: boolean, waMessageId?: string, waId?: string, data?: object, error?: string}>}
+ */
+async function sendWhatsAppTemplate(
+  to,
+  templateName,
+  langCode     = 'en',
+  components   = [],
+  messageType  = 'template',
+  referenceId  = null
+) {
+  const normalizedPhone = normalizePhone(to);
+
+  if (!normalizedPhone) {
+    const errMsg = `Invalid phone number: "${to}"`;
+    logger.error(errMsg, { messageType, referenceId });
+    _recordMessage(to, `[template:${templateName}]`, messageType, referenceId, 'failed', errMsg);
+    return { success: false, error: errMsg };
+  }
+
+  const settings       = store.getSettings();
+  const token          = settings.whatsappToken          || process.env.WHATSAPP_TOKEN;
+  const phoneNumberId  = settings.whatsappPhoneNumberId  || process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) {
+    const errMsg = 'WhatsApp token or Phone Number ID is not configured';
+    logger.error(errMsg);
+    _recordMessage(normalizedPhone, `[template:${templateName}]`, messageType, referenceId, 'failed', errMsg);
+    return { success: false, error: errMsg };
+  }
+
+  const url     = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+  const payload = {
+    messaging_product: 'whatsapp',
+    to:   normalizedPhone,
+    type: 'template',
+    template: {
+      name:       templateName,
+      language:   { code: langCode },
+      ...(components.length > 0 ? { components } : {}),
+    },
+  };
+
+  logger.info(`📤 Sending WhatsApp template "${templateName}" → ${normalizedPhone}`, {
+    messageType, referenceId, langCode,
+  });
+
+  try {
+    const response    = await axios.post(url, payload, {
+      headers: {
+        Authorization:  `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 12000,
+    });
+
+    const waMessageId = response.data?.messages?.[0]?.id;
+    const waId        = response.data?.contacts?.[0]?.wa_id;
+
+    logger.info(`✅ WhatsApp template "${templateName}" accepted for ${normalizedPhone}`, {
+      waMessageId, waId, messageType,
+      note: 'wamid accepted — actual delivery confirmed via status webhook',
+    });
+
+    _recordMessage(normalizedPhone, `[template:${templateName}]`, messageType, referenceId, 'sent', null);
+    return { success: true, waMessageId, waId, data: response.data };
+  } catch (err) {
+    const errorMessage = _extractErrorMessage(err);
+    logger.error(`❌ WhatsApp template send failed to ${normalizedPhone}: ${errorMessage}`, {
+      messageType, referenceId, templateName,
+    });
+    _recordMessage(normalizedPhone, `[template:${templateName}]`, messageType, referenceId, 'failed', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
  * Send a plain-text WhatsApp message via Meta Cloud API.
+ *
+ * ⚠️  Only works within the 24-hour customer-service window (i.e. the customer
+ *     messaged YOUR number first).  For proactive outbound use sendWhatsAppTemplate().
  *
  * @param {string}  to           Recipient phone (any format; will be normalised)
  * @param {string}  message      Message body
- * @param {string}  [messageType='manual']  'order_confirmation' | 'abandoned_cart' | 'manual'
- * @param {string|null} [referenceId]  Order ID or checkout ID for log correlation
+ * @param {string}  [messageType='manual']
+ * @param {string|null} [referenceId]
  * @returns {Promise<{success: boolean, data?: object, error?: string}>}
  */
 async function sendWhatsAppMessage(
@@ -80,7 +182,6 @@ async function sendWhatsAppMessage(
     return { success: false, error: errMsg };
   }
 
-  // Resolve credentials from runtime settings, then env vars
   const settings = store.getSettings();
   const token = settings.whatsappToken || process.env.WHATSAPP_TOKEN;
   const phoneNumberId =
@@ -101,10 +202,11 @@ async function sendWhatsAppMessage(
     text: { body: message },
   };
 
-  logger.info(`📤 Sending WhatsApp message → ${normalizedPhone}`, {
+  logger.info(`📤 Sending WhatsApp free-text → ${normalizedPhone}`, {
     messageType,
     referenceId,
     chars: message.length,
+    warning: 'Free-text only works within 24h customer-service window — use template for proactive messages',
   });
 
   try {
@@ -117,9 +219,9 @@ async function sendWhatsAppMessage(
     });
 
     const waMessageId = response.data?.messages?.[0]?.id;
-    logger.info(`✅ WhatsApp message delivered to ${normalizedPhone}`, {
-      waMessageId,
-      messageType,
+    const waId        = response.data?.contacts?.[0]?.wa_id;
+    logger.info(`✅ WhatsApp free-text accepted for ${normalizedPhone}`, {
+      waMessageId, waId, messageType,
     });
 
     _recordMessage(normalizedPhone, message, messageType, referenceId, 'sent', null);
@@ -164,4 +266,4 @@ function _recordMessage(to, message, type, referenceId, status, error) {
   });
 }
 
-module.exports = { sendWhatsAppMessage, normalizePhone };
+module.exports = { sendWhatsAppMessage, sendWhatsAppTemplate, normalizePhone };

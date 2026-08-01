@@ -47,7 +47,7 @@
 
 const logger = require('./logger');
 const store  = require('./store');
-const { sendWhatsAppMessage } = require('./whatsapp');
+const { sendWhatsAppMessage, sendWhatsAppTemplate } = require('./whatsapp');
 
 // ── Auth verification middleware ──────────────────────────────────────────────
 
@@ -240,7 +240,7 @@ async function handleAbandonedCart(data) {
     totalPrice,
     lineItems,
     abandonedCheckoutUrl,
-    source: 'fastrr',          // ← distinguishes Fastrr carts from Shopify carts
+    source: 'fastrr',
     timestamp: new Date().toISOString(),
     reminded: false,
   });
@@ -255,15 +255,56 @@ async function handleAbandonedCart(data) {
     return;
   }
 
-  const message = buildAbandonedCartMessage(data);
-  const result  = await sendWhatsAppMessage(
-    phone, message, 'abandoned_cart', checkoutId
-  );
+  // ── Send via approved template (required for proactive outbound messages) ──
+  const templateName = process.env.WHATSAPP_ABANDONED_CART_TEMPLATE;
+  const langCode     = process.env.WHATSAPP_TEMPLATE_LANG || 'en';
+
+  let result;
+
+  if (templateName) {
+    // Build template components with the cart variables
+    //
+    // Expected template body (example):
+    //   "Hi {{1}}! You left items worth {{2}} in your cart. Complete your order: {{3}}"
+    //
+    // Adjust the parameters below to match YOUR approved template's variable order.
+    const cartValue = totalPrice && parseFloat(totalPrice) > 0
+      ? `${currency} ${parseFloat(totalPrice).toFixed(2)}`
+      : 'your selected items';
+
+    const components = [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: customerName   || 'there'   },   // {{1}} customer name
+          { type: 'text', text: cartValue                   },   // {{2}} cart value
+          { type: 'text', text: abandonedCheckoutUrl || ''  },   // {{3}} checkout URL
+        ],
+      },
+    ];
+
+    logger.info(`[Fastrr] Using template "${templateName}" (${langCode}) for ${phone}`);
+    result = await sendWhatsAppTemplate(
+      phone, templateName, langCode, components, 'abandoned_cart', checkoutId
+    );
+  } else {
+    // No template configured — fall back to free-form text.
+    // ⚠️  This only works if the customer messaged your WhatsApp number in the last 24 h.
+    // Set WHATSAPP_ABANDONED_CART_TEMPLATE in .env to fix silent non-delivery.
+    logger.warn(
+      '[Fastrr] WHATSAPP_ABANDONED_CART_TEMPLATE not set — falling back to free-text '
+      + '(will be silently dropped by Meta outside 24-hour window)'
+    );
+    const message = buildAbandonedCartMessage(data);
+    result = await sendWhatsAppMessage(
+      phone, message, 'abandoned_cart', checkoutId
+    );
+  }
 
   store.markCheckoutReminded(checkoutId);
 
   if (result.success) {
-    logger.info(`[Fastrr] ✅ Reminder sent to ${phone}`);
+    logger.info(`[Fastrr] ✅ Reminder sent to ${phone} (template: ${templateName || 'free-text'})`);
   } else {
     logger.error(`[Fastrr] ❌ Reminder failed for ${checkoutId}: ${result.error}`);
   }
