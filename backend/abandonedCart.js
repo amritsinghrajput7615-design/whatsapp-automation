@@ -96,7 +96,13 @@ async function checkAbandonedCarts() {
         //   Your cart total: {{3}}
         //   Prices may change if items go out of stock.
         //
-        // Button: "Visit website" (dynamic URL suffix = checkout URL)
+        // Button: "Visit website" (dynamic URL suffix only — NOT the full URL).
+        //   Meta requires only the dynamic suffix after the static base URL that
+        //   was set when the template was created in WhatsApp Manager.
+        //   Set WHATSAPP_TEMPLATE_URL_BASE to that static base (e.g.
+        //   "https://amritsinghrajput.myshopify.com/") so we can strip it.
+        //   If the env var is absent the button component is omitted and the
+        //   body message still delivers.
 
         const cartTotal = checkout.totalPrice
           ? `${checkout.currency || 'INR'} ${parseFloat(checkout.totalPrice).toFixed(2)}`
@@ -104,22 +110,25 @@ async function checkAbandonedCarts() {
 
         const firstItem = (checkout.lineItems || [])[0]?.title || 'your items';
 
+        // Compute the dynamic URL suffix for the button component.
+        const urlSuffix = _buttonSuffix(checkout.abandonedCheckoutUrl);
+
         const components = [
           {
             type: 'body',
             parameters: [
-              { type: 'text', text: customerName || 'there'             },  // {{1}} name
-              { type: 'text', text: firstItem                           },  // {{2}} item
-              { type: 'text', text: cartTotal                           },  // {{3}} total
+              { type: 'text', text: customerName || 'there' },  // {{1}} name
+              { type: 'text', text: firstItem               },  // {{2}} item
+              { type: 'text', text: cartTotal               },  // {{3}} total
             ],
           },
-          // "Visit website" URL button
-          ...(checkout.abandonedCheckoutUrl ? [{
+          // "Visit website" URL button — only included when a suffix is available
+          ...(urlSuffix ? [{
             type: 'button',
             sub_type: 'url',
             index: '0',
             parameters: [
-              { type: 'text', text: checkout.abandonedCheckoutUrl },
+              { type: 'text', text: urlSuffix },
             ],
           }] : []),
         ];
@@ -156,6 +165,52 @@ async function checkAbandonedCarts() {
   }
 
   logger.info(`✔ Abandoned cart check done — ${remindersSent} reminder(s) sent`);
+}
+
+// ── URL button helper ─────────────────────────────────────────────────────────
+
+/**
+ * Return the dynamic URL suffix expected by a WhatsApp URL-button component.
+ *
+ * Meta requires the button parameter to contain ONLY the part of the URL that
+ * comes after the static base URL configured when the template was created
+ * in WhatsApp Manager.  Sending the full URL causes error 132018.
+ *
+ * Configure WHATSAPP_TEMPLATE_URL_BASE to your store's base URL, e.g.:
+ *   WHATSAPP_TEMPLATE_URL_BASE=https://amritsinghrajput.myshopify.com/
+ *
+ * If the env var is not set, or the checkout URL doesn't start with the base,
+ * returns null — the button component will be omitted from the template call
+ * so the body message still delivers without triggering a 132018 error.
+ *
+ * @param {string|undefined} checkoutUrl  Full abandoned-checkout URL from Shopify
+ * @returns {string|null}
+ */
+function _buttonSuffix(checkoutUrl) {
+  if (!checkoutUrl) return null;
+
+  const base = (process.env.WHATSAPP_TEMPLATE_URL_BASE || '').trim();
+
+  if (!base) {
+    // No base configured — cannot compute suffix safely; skip the button.
+    logger.warn(
+      'WHATSAPP_TEMPLATE_URL_BASE is not set — URL button omitted from template. ' +
+      'Set it to your store base URL (e.g. https://yourstore.myshopify.com/) to enable the button.'
+    );
+    return null;
+  }
+
+  if (!checkoutUrl.startsWith(base)) {
+    // URL doesn't match the configured base — skip the button to avoid 132018.
+    logger.warn(
+      `Checkout URL "${checkoutUrl}" does not start with WHATSAPP_TEMPLATE_URL_BASE "${base}" — ` +
+      'URL button omitted.'
+    );
+    return null;
+  }
+
+  const suffix = checkoutUrl.slice(base.length);
+  return suffix || null;
 }
 
 // ── Scheduler ─────────────────────────────────────────────────────────────────
