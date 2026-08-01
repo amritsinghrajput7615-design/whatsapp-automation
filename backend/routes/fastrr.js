@@ -105,10 +105,11 @@ router.post('/', softAuth, (req, res) => {
       const event = data.event;
 
       logger.info(`[Fastrr] Processing event: "${event}"`, {
-        checkoutId: data.checkoutId,
-        phone:      data.phone,
-        total:      `${data.currency} ${data.totalPrice}`,
-        items:      data.lineItems?.length,
+        checkoutId:  data.checkoutId  || '(empty — will be skipped!)',
+        phone:       data.phone       || '(none)',
+        customerName: data.customerName,
+        total:       `${data.currency} ${data.totalPrice}`,
+        items:       data.lineItems?.length,
       });
 
       // Fastrr sometimes sends no "event" field — every POST to this

@@ -88,26 +88,95 @@ function verifyFastrrWebhook(req, res, next) {
  * Field names differ slightly across Fastrr API versions — this absorbs that.
  */
 function normalisePayload(body) {
+  // ── Resolve line items ─────────────────────────────────────────────────────
+  // Fastrr may send items as:
+  //   • body.line_items  — standard array
+  //   • body.items       — array of objects  OR  array of title strings
+  //   • body.item_title_list / body.item_name_list — comma-separated string
+  let rawItems = body.line_items || body.items || [];
+
+  // If items is an array of plain strings (title only), box them up
+  if (rawItems.length > 0 && typeof rawItems[0] === 'string') {
+    rawItems = rawItems.map((t) => ({ title: t }));
+  }
+
+  // Fallback: build from parallel list fields Fastrr sends
+  if (rawItems.length === 0) {
+    const titles  = _splitList(body.item_title_list  || body.item_name_list || body.sku_list);
+    const prices  = _splitList(body.item_price_list);
+    const qtys    = _splitList(body.item_count ? String(body.item_count) : '');
+    if (titles.length > 0) {
+      rawItems = titles.map((title, idx) => ({
+        title,
+        price:    prices[idx]  || '0',
+        quantity: Number(qtys[idx]) || 1,
+      }));
+    }
+  }
+
+  const lineItems = rawItems.map((i) => ({
+    title:        i.title || i.name || 'Product',
+    variantTitle: i.variant_title || i.variant || '',
+    quantity:     i.quantity || 1,
+    price:        i.price   || '0',
+    imageUrl:     i.image_url || i.image || '',
+  }));
+
+  // ── Resolve checkout ID ────────────────────────────────────────────────────
+  // Fastrr live payload uses cart_id / cart_token at the top level.
+  // Fall back to a synthetic key (phone + date) so we never skip a real cart.
+  const phone = String(
+    body.phone        ||
+    body.phone_number ||
+    ''
+  ).trim();
+
+  const rawCheckoutId =
+    body.cart_token   ||
+    body.token        ||
+    body.cart_id      ||
+    body.checkout_id  ||
+    body.id           ||
+    '';
+
+  const checkoutId = String(rawCheckoutId).trim() ||
+    (phone ? `fastrr_${phone}_${Date.now()}` : '');
+
+  // ── Resolve abandoned-checkout URL ─────────────────────────────────────────
+  // Live Fastrr payload uses "checkout_url"; older docs say "abandoned_checkout_url".
+  const abandonedCheckoutUrl =
+    body.abandoned_checkout_url ||
+    body.checkout_url           ||
+    '';
+
+  // ── Resolve customer name ─────────────────────────────────────────────────
+  const firstName = body.first_name || '';
+  const lastName  = body.last_name  || '';
+  const customerName =
+    [firstName, lastName].filter(Boolean).join(' ') ||
+    body.name ||
+    'there';
+
   return {
-    event:               body.event || 'unknown',
-    checkoutId:          String(body.cart_token || body.token || body.cart_id || body.checkout_id || body.id || ''),
-    cartToken:           body.cart_token || body.token || '',
-    phone:               body.phone || body.phone_number || '',
-    email:               body.email || '',
-    firstName:           body.first_name  || '',
-    lastName:            body.last_name   || '',
-    customerName:        [body.first_name, body.last_name].filter(Boolean).join(' ') || body.name || 'there',
-    currency:            body.currency    || 'INR',
-    totalPrice:          body.total_price || body.total_amount || '0',
-    abandonedCheckoutUrl: body.abandoned_checkout_url || '',
-    lineItems: (body.line_items || body.items || []).map((i) => ({
-      title:        i.title || i.name || 'Product',
-      variantTitle: i.variant_title || i.variant || '',
-      quantity:     i.quantity || 1,
-      price:        i.price   || '0',
-      imageUrl:     i.image_url || i.image || '',
-    })),
+    event:    body.event || 'unknown',
+    checkoutId,
+    cartToken: String(body.cart_token || body.token || '').trim(),
+    phone,
+    email:    body.email || '',
+    firstName,
+    lastName,
+    customerName,
+    currency:  body.currency || 'INR',
+    totalPrice: String(body.total_price || body.total_amount || '0'),
+    abandonedCheckoutUrl,
+    lineItems,
   };
+}
+
+/** Split a comma-separated string into a trimmed array (empty → []). */
+function _splitList(val) {
+  if (!val) return [];
+  return String(val).split(',').map((s) => s.trim()).filter(Boolean);
 }
 
 // ── Message builder ───────────────────────────────────────────────────────────
