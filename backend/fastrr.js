@@ -279,6 +279,11 @@ async function handleAbandonedCart(data) {
     // {{2}} = first item title (the template shows one item name)
     const firstItem = lineItems[0]?.title || 'your items';
 
+    // ⚠️  The "Visit website" button in the template is configured as a STATIC URL
+    //     in WhatsApp Manager (https://celfcare.in/).  Static URL buttons must NOT
+    //     have a button component — Meta returns error #132018 if one is sent.
+    //     Only include a button component if you change the template button to
+    //     "Dynamic" and set WHATSAPP_TEMPLATE_URL_BASE in .env.
     const components = [
       {
         type: 'body',
@@ -288,15 +293,6 @@ async function handleAbandonedCart(data) {
           { type: 'text', text: cartTotal               },   // {{3}} total
         ],
       },
-      // "Visit website" URL button — passes the checkout URL as the dynamic suffix
-      ...(abandonedCheckoutUrl ? [{
-        type: 'button',
-        sub_type: 'url',
-        index: '0',
-        parameters: [
-          { type: 'text', text: abandonedCheckoutUrl },
-        ],
-      }] : []),
     ];
 
     logger.info(`[Fastrr] Using template "${templateName}" (${langCode}) for ${phone}`);
