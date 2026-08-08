@@ -155,6 +155,15 @@ function addMessage(message) {
   saveStore();
 }
 
+function updateMessageStatus(waMessageId, status) {
+  const msg = store.messages.find((m) => m.id === waMessageId);
+  if (msg) {
+    msg.status = status;
+    msg.updatedAt = new Date().toISOString();
+    saveStore();
+  }
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 function getSettings() {
@@ -186,6 +195,7 @@ module.exports = {
   // Messages
   getMessages,
   addMessage,
+  updateMessageStatus,
 
   // Settings
   getSettings,
