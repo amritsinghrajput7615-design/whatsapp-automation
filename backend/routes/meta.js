@@ -24,7 +24,74 @@ const router  = express.Router();
 const logger  = require('../logger');
 const store   = require('../store');
 
+// ── Message body extractor ────────────────────────────────────────────────────
+// Converts a raw Meta message object into a human-readable string for logging
+// and storage. Handles every type Meta currently sends.
+
+function extractMessageBody(msg) {
+  switch (msg.type) {
+    case 'text':
+      return msg.text?.body || '[empty text]';
+
+    case 'image':
+      return msg.image?.caption
+        ? `📷 Image: "${msg.image.caption}"`
+        : '📷 Image';
+
+    case 'video':
+      return msg.video?.caption
+        ? `🎥 Video: "${msg.video.caption}"`
+        : '🎥 Video';
+
+    case 'audio':
+      return msg.audio?.voice ? '🎤 Voice note' : '🎵 Audio file';
+
+    case 'document':
+      return msg.document?.filename
+        ? `📄 Document: ${msg.document.filename}`
+        : '📄 Document';
+
+    case 'sticker':
+      return '🪄 Sticker';
+
+    case 'location': {
+      const loc = msg.location || {};
+      const place = loc.name || loc.address || `${loc.latitude},${loc.longitude}`;
+      return `📍 Location: ${place}`;
+    }
+
+    case 'contacts':
+      return `👤 Contact: ${msg.contacts?.[0]?.name?.formatted_name || 'unknown'}`;
+
+    case 'reaction':
+      return `${msg.reaction?.emoji || '👍'} Reaction to message`;
+
+    case 'button':
+      return `🔘 Button reply: "${msg.button?.text || ''}"`;
+
+    case 'interactive': {
+      const ir = msg.interactive;
+      if (ir?.type === 'button_reply') return `🔘 Button: "${ir.button_reply?.title}"`;
+      if (ir?.type === 'list_reply')   return `📋 List reply: "${ir.list_reply?.title}"`;
+      return `🔲 Interactive: ${ir?.type || 'unknown'}`;
+    }
+
+    case 'order':
+      return `🛒 Order: ${msg.order?.product_items?.length || 0} item(s)`;
+
+    case 'system':
+      return `⚙️ System: ${msg.system?.body || msg.system?.type || 'event'}`;
+
+    case 'unsupported':
+      return '⚠️ Unsupported message type';
+
+    default:
+      return `[${msg.type}]`;
+  }
+}
+
 // ── GET /webhooks/meta ── Verification handshake ──────────────────────────────
+
 // Meta calls this once when you click "Verify and save" in the dashboard.
 
 router.get('/', (req, res) => {
@@ -72,22 +139,23 @@ router.post('/', (req, res) => {
           if (value.messages?.length) {
             for (const msg of value.messages) {
               const from = msg.from; // sender's phone number
-              const text = msg.type === 'text' ? msg.text?.body : `[${msg.type}]`;
+              const body = extractMessageBody(msg);
 
-              logger.info(`[Meta] 📩 Incoming message from ${from}: ${text}`, {
+              logger.info(`[Meta] 📩 Incoming message from ${from}: ${body}`, {
                 messageId: msg.id,
+                type:      msg.type,
                 timestamp: msg.timestamp,
               });
 
               // Log it in the store so the dashboard can show it
               store.addMessage({
-                id:         msg.id,
-                direction:  'inbound',
-                phone:      from,
-                body:       text,
-                type:       msg.type,
-                status:     'received',
-                timestamp:  new Date(Number(msg.timestamp) * 1000).toISOString(),
+                id:        msg.id,
+                direction: 'inbound',
+                phone:     from,
+                body,
+                type:      msg.type,
+                status:    'received',
+                timestamp: new Date(Number(msg.timestamp) * 1000).toISOString(),
               });
             }
           }
