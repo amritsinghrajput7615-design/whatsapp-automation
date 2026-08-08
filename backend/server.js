@@ -342,6 +342,295 @@ app.get('/privacy-policy', (_req, res) => {
 </html>`);
 });
 
+// ── Terms of Service ──────────────────────────────────────────────────────────
+app.get('/terms-of-service', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service – WhatsApp Automation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f7f8fc;
+      color: #1a1a2e;
+      line-height: 1.75;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      padding: 3rem 2.5rem;
+    }
+    h1 { font-size: 2rem; font-weight: 700; color: #0d1b2a; margin-bottom: 0.25rem; }
+    .last-updated { font-size: 0.85rem; color: #6b7280; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.15rem; font-weight: 600; color: #0d1b2a;
+      margin-top: 2rem; margin-bottom: 0.5rem;
+      padding-bottom: 0.3rem; border-bottom: 2px solid #e5e7eb;
+    }
+    p, li { font-size: 0.97rem; color: #374151; }
+    ul { padding-left: 1.4rem; margin-top: 0.4rem; }
+    li { margin-bottom: 0.35rem; }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .highlight {
+      background: #f0fdf4; border-left: 4px solid #16a34a;
+      padding: 0.75rem 1rem; border-radius: 6px;
+      margin-top: 1rem; font-size: 0.95rem; color: #15803d;
+    }
+    footer { margin-top: 3rem; font-size: 0.8rem; color: #9ca3af; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Terms of Service</h1>
+    <p class="last-updated">Last updated: August 8, 2025</p>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>
+      By accessing or using the <strong>WhatsApp Automation</strong> service (&ldquo;Service&rdquo;),
+      you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree, please
+      discontinue use of the Service immediately.
+    </p>
+
+    <h2>2. Description of Service</h2>
+    <p>
+      WhatsApp Automation enables merchant partners to send automated WhatsApp messages
+      (order confirmations, shipping updates, abandoned-cart reminders, and promotional notifications)
+      to their customers via the Meta WhatsApp Business Cloud API, integrated with Shopify stores.
+    </p>
+
+    <h2>3. Eligibility</h2>
+    <ul>
+      <li>You must be at least 18 years old to use this Service.</li>
+      <li>You must have a valid Shopify store and an approved Meta WhatsApp Business account.</li>
+      <li>Use of the Service for illegal, fraudulent, or abusive purposes is strictly prohibited.</li>
+    </ul>
+
+    <h2>4. Merchant Responsibilities</h2>
+    <ul>
+      <li>You are solely responsible for obtaining valid opt-in consent from your customers before sending them WhatsApp messages.</li>
+      <li>You must comply with Meta&rsquo;s <a href="https://www.whatsapp.com/legal/business-policy" target="_blank" rel="noopener noreferrer">WhatsApp Business Policy</a> and all applicable laws (including GDPR, TCPA, and TRAI regulations).</li>
+      <li>You must not use the Service to send spam, unsolicited messages, or content that violates Meta&rsquo;s policies.</li>
+      <li>You are responsible for the accuracy of all message content, product information, and customer data sent through the Service.</li>
+    </ul>
+
+    <h2>5. Prohibited Uses</h2>
+    <p>You agree NOT to use the Service to:</p>
+    <ul>
+      <li>Send messages without explicit customer opt-in consent.</li>
+      <li>Distribute illegal, harmful, defamatory, or fraudulent content.</li>
+      <li>Reverse-engineer, scrape, or attempt to access the Service&rsquo;s infrastructure without authorisation.</li>
+      <li>Resell or sublicense the Service to third parties without prior written consent.</li>
+    </ul>
+
+    <h2>6. Intellectual Property</h2>
+    <p>
+      All software, code, designs, and content comprising the Service are the intellectual property of
+      WhatsApp Automation and its licensors. You are granted a limited, non-exclusive, non-transferable
+      licence to use the Service solely for your business purposes.
+    </p>
+
+    <h2>7. Limitation of Liability</h2>
+    <p>
+      To the fullest extent permitted by law, WhatsApp Automation shall not be liable for any indirect,
+      incidental, special, or consequential damages arising from your use of the Service, including but
+      not limited to loss of revenue, data, or business opportunities. Our total liability shall not
+      exceed the fees paid by you in the 30 days preceding the claim.
+    </p>
+
+    <h2>8. Disclaimer of Warranties</h2>
+    <p>
+      The Service is provided &ldquo;as is&rdquo; without warranties of any kind, express or implied.
+      We do not guarantee uninterrupted service, error-free operation, or that messages will always
+      be delivered (delivery depends on Meta&rsquo;s infrastructure and the recipient&rsquo;s network).
+    </p>
+
+    <h2>9. Termination</h2>
+    <p>
+      We reserve the right to suspend or terminate your access to the Service at any time, with or
+      without notice, if you violate these Terms or Meta&rsquo;s policies. Upon termination, your data
+      will be handled as described in our <a href="/privacy-policy">Privacy Policy</a>.
+    </p>
+
+    <h2>10. Governing Law</h2>
+    <p>
+      These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive
+      jurisdiction of the courts located in India.
+    </p>
+
+    <h2>11. Changes to These Terms</h2>
+    <p>
+      We may update these Terms periodically. The &ldquo;Last updated&rdquo; date reflects the most recent
+      revision. Continued use of the Service after changes constitutes acceptance of the revised Terms.
+    </p>
+
+    <h2>12. Contact Us</h2>
+    <div class="highlight">
+      For questions about these Terms, please contact:<br />
+      <strong>📧 <a href="mailto:whatsappforbussiness@gmail.com">whatsappforbussiness@gmail.com</a></strong>
+    </div>
+
+    <footer>&copy; 2025 WhatsApp Automation. All rights reserved.</footer>
+  </div>
+</body>
+</html>`);
+});
+
+// ── Data Deletion ─────────────────────────────────────────────────────────────
+app.get('/data-deletion', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Deletion Request – WhatsApp Automation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f7f8fc;
+      color: #1a1a2e;
+      line-height: 1.75;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      padding: 3rem 2.5rem;
+    }
+    .icon { font-size: 3rem; text-align: center; margin-bottom: 1rem; }
+    h1 { font-size: 1.9rem; font-weight: 700; color: #0d1b2a; margin-bottom: 0.25rem; text-align: center; }
+    .subtitle { font-size: 0.95rem; color: #6b7280; margin-bottom: 2rem; text-align: center; }
+    h2 {
+      font-size: 1.1rem; font-weight: 600; color: #0d1b2a;
+      margin-top: 2rem; margin-bottom: 0.5rem;
+      padding-bottom: 0.3rem; border-bottom: 2px solid #e5e7eb;
+    }
+    p, li { font-size: 0.97rem; color: #374151; }
+    ul { padding-left: 1.4rem; margin-top: 0.4rem; }
+    li { margin-bottom: 0.35rem; }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card {
+      background: #fff7ed; border: 1px solid #fed7aa;
+      border-radius: 10px; padding: 1.5rem 1.75rem; margin-top: 1.5rem;
+    }
+    .card h3 { font-size: 1rem; font-weight: 600; color: #9a3412; margin-bottom: 0.5rem; }
+    .email-btn {
+      display: inline-block;
+      margin-top: 1rem;
+      background: #ea580c;
+      color: #ffffff;
+      padding: 0.65rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .email-btn:hover { background: #c2410c; text-decoration: none; }
+    .steps {
+      counter-reset: step-counter;
+      list-style: none;
+      padding: 0;
+      margin-top: 0.75rem;
+    }
+    .steps li {
+      counter-increment: step-counter;
+      padding: 0.5rem 0 0.5rem 2.5rem;
+      position: relative;
+    }
+    .steps li::before {
+      content: counter(step-counter);
+      position: absolute; left: 0; top: 0.45rem;
+      background: #0d1b2a; color: #fff;
+      font-size: 0.75rem; font-weight: 700;
+      width: 1.5rem; height: 1.5rem;
+      border-radius: 50%; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .badge {
+      display: inline-block; background: #dcfce7; color: #166534;
+      font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.6rem;
+      border-radius: 999px; margin-left: 0.4rem; vertical-align: middle;
+    }
+    footer { margin-top: 3rem; font-size: 0.8rem; color: #9ca3af; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🗑️</div>
+    <h1>Data Deletion Request</h1>
+    <p class="subtitle">Your privacy matters. We will delete your data promptly upon request.</p>
+
+    <h2>What Data We Hold</h2>
+    <p>When you interact with a merchant using our WhatsApp Automation service, we may hold:</p>
+    <ul>
+      <li>Your <strong>phone number</strong> used to send WhatsApp messages.</li>
+      <li><strong>Message content</strong> (order updates, cart reminders) generated from Shopify order data.</li>
+      <li><strong>Delivery status</strong> (read/delivered receipts from Meta&rsquo;s API).</li>
+      <li>Server <strong>log entries</strong> referencing your phone number (retained for up to 30 days).</li>
+    </ul>
+
+    <h2>How to Request Deletion</h2>
+    <p>To request that your personal data be deleted from our systems, follow these steps:</p>
+    <ol class="steps">
+      <li>Send an email to the address below with the subject line: <strong>&ldquo;Data Deletion Request&rdquo;</strong>.</li>
+      <li>Include your <strong>phone number</strong> (in international format, e.g. +91XXXXXXXXXX) so we can locate your records.</li>
+      <li>We will confirm receipt within <strong>2 business days</strong> and complete the deletion within <strong>10 business days</strong>.</li>
+      <li>You will receive a confirmation email once your data has been permanently deleted. <span class="badge">✓ Confirmed</span></li>
+    </ol>
+
+    <div class="card">
+      <h3>📧 Send Your Deletion Request To:</h3>
+      <p>
+        <strong>Email:</strong>
+        <a href="mailto:whatsappforbussiness@gmail.com">whatsappforbussiness@gmail.com</a>
+      </p>
+      <p style="margin-top:0.4rem; font-size:0.9rem; color:#7c3a10;">
+        Please use subject: <em>"Data Deletion Request"</em> and include your phone number.
+      </p>
+      <a class="email-btn" href="mailto:whatsappforbussiness@gmail.com?subject=Data%20Deletion%20Request&body=Hello%2C%0A%0AI%20would%20like%20to%20request%20deletion%20of%20my%20personal%20data.%0A%0AMy%20phone%20number%3A%20%2B91XXXXXXXXXX%0A%0AThank%20you.">
+        ✉️ Email Us Now
+      </a>
+    </div>
+
+    <h2>What Happens After Deletion</h2>
+    <ul>
+      <li>Your phone number and associated message history will be permanently removed from our active systems.</li>
+      <li>Automated log files referencing your data will be purged on their standard 30-day cycle (or sooner upon request).</li>
+      <li>Note: We cannot delete data that has already been transmitted to and stored by Meta&rsquo;s WhatsApp servers. Please refer to <a href="https://www.whatsapp.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">WhatsApp&rsquo;s Privacy Policy</a> for their data practices.</li>
+    </ul>
+
+    <h2>Opt Out of Messages</h2>
+    <p>
+      You can stop receiving WhatsApp messages at any time by replying <strong>STOP</strong> to any message
+      you receive. This will immediately remove you from future message sends.
+    </p>
+
+    <p style="margin-top:1.5rem;">
+      For more information, see our <a href="/privacy-policy">Privacy Policy</a> and
+      <a href="/terms-of-service">Terms of Service</a>.
+    </p>
+
+    <footer>&copy; 2025 WhatsApp Automation. All rights reserved.</footer>
+  </div>
+</body>
+</html>`);
+});
+
 // ── 404 handler (API routes only when SERVE_FRONTEND is off) ─────────────────
 app.use((req, res) => {
   res.status(404).json({ error: `Not found: ${req.method} ${req.path}` });
