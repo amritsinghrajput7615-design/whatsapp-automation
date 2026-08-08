@@ -304,7 +304,7 @@ app.get('/privacy-policy', (_req, res) => {
     </ul>
     <div class="highlight">
       To exercise any of these rights or to request data deletion, please contact us at:<br />
-      <strong>📧 <a href="mailto:amritsinghrajput7615@gmail.com">amritsinghrajput7615@gmail.com</a></strong><br />
+      <strong>📧 <a href="mailto:whatsappforbussiness@gmail.com">whatsappforbussiness@gmail.com</a></strong><br />
       We will respond within <strong>10 business days</strong>.
     </div>
 
@@ -331,7 +331,7 @@ app.get('/privacy-policy', (_req, res) => {
     <h2>10. Contact Us</h2>
     <p>
       If you have any questions about this Privacy Policy, please reach out:<br />
-      <strong>Email:</strong> <a href="mailto:amritsinghrajput7615@gmail.com">amritsinghrajput7615@gmail.com</a>
+      <strong>Email:</strong> <a href="mailto:whatsappforbussiness@gmail.com">whatsappforbussiness@gmail.com</a>
     </p>
 
     <footer>
